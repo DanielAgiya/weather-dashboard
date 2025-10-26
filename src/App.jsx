@@ -37,7 +37,8 @@ export default function App() {
     localStorage.setItem(DARK_KEY, dark.toString());
   }, [dark]);
 
-  const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+ const apiKey = import.meta.env.VITE_API_KEY;
+
 
   useEffect(() => {
     // Optionally, load last searched city on start
@@ -182,7 +183,7 @@ export default function App() {
         </section>
 
         <aside className="card">
-          <h3 className="text-lg font-semibold mb-3">7-Day Forecast</h3>
+          <h3 className="text-lg font-semibold mb-3">5-Day Forecast</h3>
           {daily.length > 0 ? (
             <div className="forecast-grid">
               {daily.map((d, idx) => (

@@ -8,12 +8,12 @@
 }
 
 body {
-  @apply bg-[#e0f7fa] text-gray-800 min-h-screen font-sans;
+  @apply bg-[#e0f7fa] text-black min-h-screen font-sans;
 }
 
-/* dark mode body override -- user toggles .dark on <html> or <body> */
+/* dark mode body override */
 .dark body {
-  @apply bg-gray-900 text-gray-100;
+  @apply bg-gray-900 text-black;
 }
 
 /* Dashboard container */
@@ -26,7 +26,7 @@ body {
   @apply flex items-center justify-between mb-6 gap-4;
 }
 .brand {
-  @apply text-2xl sm:text-3xl font-bold text-primary;
+  @apply text-2xl sm:text-3xl font-bold text-black;
 }
 .controls {
   @apply flex items-center gap-3;
@@ -37,13 +37,13 @@ body {
   @apply flex flex-col sm:flex-row items-center gap-3;
 }
 .search-input {
-  @apply w-full sm:w-80 px-4 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-primary;
+  @apply w-full sm:w-80 px-4 py-2 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-primary text-black;
 }
 .btn {
   @apply px-4 py-2 rounded-lg text-white bg-primary hover:bg-blue-600 transition;
 }
 .btn-ghost {
-  @apply px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition;
+  @apply px-3 py-2 rounded-lg border border-transparent hover:bg-white/5 transition text-black;
 }
 
 /* Main area */
@@ -51,40 +51,40 @@ body {
   @apply grid grid-cols-1 lg:grid-cols-3 gap-6;
 }
 
-/* Weather card */
+/* Cards */
 .card {
-  @apply bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-md;
+  @apply bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-md text-black;
   box-shadow: var(--card-shadow);
 }
 .card-center {
-  @apply flex flex-col items-center justify-center;
+  @apply flex flex-col items-center justify-center text-black;
 }
 
 /* Weather details */
 .city-name {
-  @apply text-xl font-semibold text-primary dark:text-sky-200;
+  @apply text-xl font-semibold text-black;
 }
 .temp {
-  @apply text-5xl font-extrabold mt-2;
+  @apply text-5xl font-extrabold mt-2 text-black;
 }
 .description {
-  @apply capitalize text-gray-600 dark:text-gray-300 mt-1;
+  @apply capitalize text-black mt-1;
 }
 .meta {
-  @apply mt-3 text-sm text-gray-600 dark:text-gray-300;
+  @apply mt-3 text-sm text-black;
 }
 
 /* Forecast grid */
 .forecast-grid {
-  @apply grid grid-cols-2 sm:grid-cols-3 gap-4;
+  @apply grid grid-cols-2 sm:grid-cols-3 gap-4 text-black;
 }
 
 /* Recent searches */
 .recent-list {
-  @apply flex gap-2 flex-wrap;
+  @apply flex gap-2 flex-wrap mt-2 text-black;
 }
 .recent-list button {
-  @apply bg-blue-100 dark:bg-gray-700 text-blue-700 dark:text-gray-100 px-3 py-1 rounded-full text-sm hover:opacity-90;
+  @apply bg-blue-100 dark:bg-gray-700 text-black px-3 py-1 rounded-full text-sm hover:opacity-90;
 }
 
 /* Error */
