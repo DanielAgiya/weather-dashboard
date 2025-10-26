@@ -1,96 +1,199 @@
-import { useState } from "react";
-import "./App.css";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import SearchBar from "./components/SearchBar.jsx";
+import WeatherCard from "./components/WeatherCard.jsx";
+import ForecastCard from "./components/ForecastCard.jsx";
 
-function App() {
-  const [city, setCity] = useState("");
+const STORAGE_KEY = "weather:recentSearches";
+const DARK_KEY = "weather:darkMode";
+
+export default function App() {
+  const [query, setQuery] = useState("");
   const [weather, setWeather] = useState(null);
+  const [daily, setDaily] = useState([]); // array of daily forecast objects
   const [error, setError] = useState("");
-
-  // ✅ Import your API key from the .env file
-  const apiKey = import.meta.env.VITE_API_KEY;
-
-  // 🔍 Function to fetch weather data
-  const fetchWeather = async () => {
-    if (!city) {
-      setError("Please enter a city name");
-      setWeather(null);
-      return;
+  const [recent, setRecent] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch {
+      return [];
     }
+  });
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DARK_KEY);
+      if (saved !== null) return saved === "true";
+      // default to system preference
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    // apply dark class to document element
+    if (dark) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+    localStorage.setItem(DARK_KEY, dark.toString());
+  }, [dark]);
+
+  const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+
+  useEffect(() => {
+    // Optionally, load last searched city on start
+    if (!weather && recent.length > 0) {
+      fetchWeather(recent[0]);
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  const saveRecent = (cityName) => {
+    setRecent((prev) => {
+      const updated = [cityName, ...prev.filter((c) => c.toLowerCase() !== cityName.toLowerCase())];
+      const sliced = updated.slice(0, 5);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sliced));
+      return sliced;
+    });
+  };
+
+  const fetchWeather = async (cityName = query) => {
+    if (!cityName) return;
+    setError("");
+    setWeather(null);
+    setDaily([]);
 
     try {
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+      // current weather
+      const cur = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName)}&units=metric&appid=${apiKey}`
       );
-      const data = await response.json();
 
-      if (data.cod === 200) {
-        setWeather(data);
-        setError("");
-      } else {
-        setError("City not found. Please try again.");
-        setWeather(null);
-      }
-    } catch (error) {
-      setError("Unable to fetch weather data. Please check your connection.");
-      setWeather(null);
+      setWeather(cur.data);
+      saveRecent(cur.data.name);
+
+      // 5-day / 3-hour forecast endpoint
+      const fc = await axios.get(
+        `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cur.data.name)}&units=metric&appid=${apiKey}`
+      );
+
+      // process into daily forecast: pick one entry per day (prefer midday)
+      const list = fc.data.list || [];
+      const dailyMap = new Map();
+
+      list.forEach((item) => {
+        const date = new Date(item.dt * 1000);
+        const dayKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
+        if (!dailyMap.has(dayKey)) {
+          dailyMap.set(dayKey, []);
+        }
+        dailyMap.get(dayKey).push(item);
+      });
+
+      // convert map to array and select midday (12:00) or nearest entry
+      const dailyArr = Array.from(dailyMap.entries()).map(([day, items]) => {
+        // find the item closest to 12:00
+        const targetHour = 12;
+        let best = items[0];
+        let bestDiff = Math.abs(new Date(items[0].dt * 1000).getHours() - targetHour);
+        items.forEach((it) => {
+          const hr = new Date(it.dt * 1000).getHours();
+          const diff = Math.abs(hr - targetHour);
+          if (diff < bestDiff) {
+            best = it;
+            bestDiff = diff;
+          }
+        });
+        return best;
+      });
+
+      // optionally keep next 7 days (API provides ~5 days); slice safely
+      setDaily(dailyArr.slice(0, 7));
+    } catch (err) {
+      console.error(err);
+      setError("City not found. Please try again.");
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-blue-100 to-blue-300 p-4">
-      <h1 className="text-4xl font-bold text-blue-800 mb-8">
-        🌤 Weather Dashboard
-      </h1>
+  const handleRefresh = () => {
+    if (weather?.name) fetchWeather(weather.name);
+  };
 
-      {/* Search Input */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <input
-          type="text"
-          placeholder="Enter city name..."
-          className="px-4 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
+  const handleRecentClick = (c) => {
+    setQuery(c);
+    fetchWeather(c);
+  };
+
+  return (
+    <div className="app-container">
+      <header className="header">
+        <div className="brand">🌤 Weather Dashboard</div>
+        <div className="controls">
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              setDark((d) => !d);
+            }}
+            title="Toggle dark mode"
+          >
+            {dark ? "☀️" : "🌙"}
+          </button>
+        </div>
+      </header>
+
+      <div className="card">
+        <SearchBar
+          query={query}
+          setQuery={setQuery}
+          onSearch={() => fetchWeather(query)}
         />
-        <button
-          onClick={fetchWeather}
-          className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition duration-200"
-        >
-          Search
-        </button>
+
+        <div className="action-buttons" style={{ marginTop: 8 }}>
+          <button className="btn" onClick={() => fetchWeather(query)}>Search</button>
+          <button className="btn" onClick={handleRefresh} disabled={!weather} style={{ opacity: weather ? 1 : 0.6 }}>
+            Refresh
+          </button>
+        </div>
+
+        {recent.length > 0 && (
+          <div className="mt-4">
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">Recent:</div>
+            <div className="recent-list">
+              {recent.map((c, i) => (
+                <button key={i} onClick={() => handleRecentClick(c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && <div className="error">{error}</div>}
       </div>
 
-      {/* Error Message */}
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      <main className="main-grid mt-6">
+        <section className="card lg:col-span-2">
+          {weather ? (
+            <WeatherCard data={weather} />
+          ) : (
+            <div className="card-center">
+              <p className="text-center text-gray-600 dark:text-gray-300">Search a city to see current weather.</p>
+            </div>
+          )}
+        </section>
 
-      {/* Weather Display */}
-      {weather && (
-        <div className="bg-white shadow-md rounded-2xl p-6 text-center w-80 sm:w-96">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-            {weather.name}, {weather.sys.country}
-          </h2>
-          <p className="text-lg text-gray-600 capitalize mb-4">
-            {weather.weather[0].description}
-          </p>
-
-          <div className="flex justify-center items-center gap-4">
-            <img
-              src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
-              alt={weather.weather[0].description}
-              className="w-20 h-20"
-            />
-            <p className="text-5xl font-bold text-blue-700">
-              {Math.round(weather.main.temp)}°C
-            </p>
-          </div>
-
-          <div className="mt-4 text-gray-700">
-            <p>💧 Humidity: {weather.main.humidity}%</p>
-            <p>💨 Wind: {weather.wind.speed} km/h</p>
-          </div>
-        </div>
-      )}
+        <aside className="card">
+          <h3 className="text-lg font-semibold mb-3">7-Day Forecast</h3>
+          {daily.length > 0 ? (
+            <div className="forecast-grid">
+              {daily.map((d, idx) => (
+                <ForecastCard key={idx} day={d} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600 dark:text-gray-300">No forecast — search a city first.</p>
+          )}
+        </aside>
+      </main>
     </div>
   );
 }
-
-export default App;
